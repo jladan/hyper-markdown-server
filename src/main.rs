@@ -15,13 +15,15 @@ async fn main() {
     // This creates one from the `route` function.
     let make_svc = make_service_fn(move |_conn| {
         // NOTE: the state must be cloned before use in an async block
+        // This clone is for the function which makes new services
         let state = state.clone();
+        let service = service_fn(move |req| {
+            // NOTE: the state must be cloned a second time
+            // This clone is for the service itself
+            route(req, state.clone())
+        });
         async move {
-        Ok::<_, Infallible>(service_fn(move |req| {
-            // NOTE: the state must be cloned AGAIN?
-            let state = state.clone();
-            async move {route(req, state).await}
-        }))
+            Ok::<_, Infallible>(service)
         }
     });
 
