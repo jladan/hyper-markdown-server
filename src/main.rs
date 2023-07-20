@@ -1,26 +1,30 @@
 use std::convert::Infallible;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
 use hyper::{Method, StatusCode, Body, Request, Response, Server};
 use hyper::service::{make_service_fn, service_fn};
 
+use hyper_markdown_server::config::Config;
+
 #[tokio::main]
 async fn main() {
-    let addr = SocketAddr::from(([0,0,0,0], 7878));
-    let state = Arc::new(ServerState { counter: AtomicU64::new(0) });
+    let config = Config::build()
+        .source_env()
+        .build();
+    let addr = config.addr;
+    let context = Arc::new(ServerContext { config, counter: AtomicU64::new(0) });
 
     // A `Service` is needed for every connection.
     // This creates one from the `route` function.
     let make_svc = make_service_fn(move |_conn| {
         // NOTE: the state must be cloned before use in an async block
         // This clone is for the function which makes new services
-        let state = state.clone();
+        let context = context.clone();
         let service = service_fn(move |req| {
             // NOTE: the state must be cloned a second time
             // This clone is for the service itself
-            route(req, state.clone())
+            route(req, context.clone())
         });
         async move {
             Ok::<_, Infallible>(service)
@@ -35,11 +39,12 @@ async fn main() {
     }
 }
 
-struct ServerState {
+struct ServerContext {
     counter: AtomicU64,
+    config: Config,
 }
 
-async fn route(req: Request<Body>, state: Arc<ServerState>) -> Result<Response<Body>, Infallible> {
+async fn route(req: Request<Body>, state: Arc<ServerContext>) -> Result<Response<Body>, Infallible> {
     state.counter.fetch_add(1, std::sync::atomic::Ordering::AcqRel);
     let count = &state.counter;
     let response = match (req.method(), req.uri().path()) {
