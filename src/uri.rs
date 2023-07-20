@@ -5,7 +5,7 @@
 //!
 
 use std::{
-    path::PathBuf, ffi::OsStr,
+    path::{PathBuf, Path}, ffi::OsStr,
 };
 
 use url_escape::decode as decode_url;
@@ -17,10 +17,19 @@ pub enum Resolved {
     File(PathBuf),
     Markdown(PathBuf),
     Directory(PathBuf),
-    None,
 }
 
-pub fn resolve(uri: &hyper::Uri, config: &Config) -> Resolved {
+impl AsRef<Path> for Resolved {
+    fn as_ref(&self) -> &Path {
+        match self {
+            Self::File(p) => p.as_ref(),
+            Self::Markdown(p) => p.as_ref(),
+            Self::Directory(p) => p.as_ref(),
+        }
+    }
+}
+
+pub fn resolve(uri: &hyper::Uri, config: &Config) -> Option<Resolved> {
     eprintln!("{:?}", uri.path());
     let relpath = force_relative(&decode_url(uri.path()));
     eprintln!("{:?}", relpath);
@@ -29,22 +38,22 @@ pub fn resolve(uri: &hyper::Uri, config: &Config) -> Resolved {
     // TODO: support markdown files without an extension?
     //       what if there is both a file and directory: `things.md`, `things/stuff.md` ?
     if path.is_dir() {
-        return Resolved::Directory(path);
+        return Some(Resolved::Directory(path));
     } else if path.is_file() {
         return if path.extension() == Some(&OsStr::new("md")) {
-            Resolved::Markdown(path)
+            Some(Resolved::Markdown(path))
         } else {
-            Resolved::File(path)
+            Some(Resolved::File(path))
         }
     }
     // }}} 
     // Look in the staticdir
     let path = config.staticdir.join(&relpath);
     if path.is_file() {
-        return Resolved::File(path);
+        return Some(Resolved::File(path));
     }
     // Nothing found
-    Resolved::None
+    None
 }
 
 fn force_relative(uri: &str) -> PathBuf {

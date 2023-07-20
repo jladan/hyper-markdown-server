@@ -1,6 +1,9 @@
 use std::convert::Infallible;
 use std::sync::Arc;
 
+use tokio::fs::File;
+use tokio_util::codec::{BytesCodec, FramedRead};
+
 use hyper::{Method, StatusCode, Body, Request, Response, Server};
 use hyper::service::{make_service_fn, service_fn};
 
@@ -48,28 +51,45 @@ struct ServerContext {
 async fn route(req: Request<Body>, state: Arc<ServerContext>) -> Result<Response<Body>, Infallible> {
     let resolved = uri::resolve(req.uri(), &state.config);
     eprintln!("{resolved:?}");
-    let response = match (req.method(), req.uri().path()) {
-        (&Method::GET, _) => {
-            Response::builder()
-                .status(StatusCode::NOT_IMPLEMENTED)
-                .body(Body::from("not yet implemented"))
-                .unwrap()
+    let response = match req.method() {
+        &Method::GET => {
+            if let Some(resolved) = resolved {
+                send_file(resolved).await
+            } else {
+                Ok(not_found())
+            }
         },
-        (&Method::HEAD, _) => {
-            Response::builder()
+        &Method::HEAD => {
+            Ok(Response::builder()
                 .status(StatusCode::NOT_IMPLEMENTED)
                 .body(Body::from("not yet implemented"))
-                .unwrap()
+                .unwrap())
         },
         _ => {
-            Response::builder()
+            Ok(Response::builder()
                 .status(StatusCode::METHOD_NOT_ALLOWED)
                 .body(Body::from("Only get requests are possible"))
-                .unwrap()
+                .unwrap())
         },
     };
 
-    Ok(response)
+    response
+}
+
+fn not_found() -> Response<Body> {
+    Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .body(Body::from("File not found"))
+        .unwrap()
+}
+
+async fn send_file(resolved: uri::Resolved) -> Result<Response<Body>, Infallible> {
+    if let Ok(file) = File::open(resolved).await {
+        let stream = FramedRead::new(file, BytesCodec::new());
+        let body = Body::wrap_stream(stream);
+        return Ok(Response::new(body));
+    }
+    Ok(not_found())
 }
 
 async fn shutdown_signal() {
