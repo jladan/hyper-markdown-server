@@ -1,4 +1,5 @@
 use std::convert::Infallible;
+use std::path::Path;
 use std::sync::Arc;
 
 use tokio::fs::File;
@@ -51,19 +52,21 @@ struct ServerContext {
 async fn route(req: Request<Body>, state: Arc<ServerContext>) -> Result<Response<Body>, Infallible> {
     let resolved = uri::resolve(req.uri(), &state.config);
     eprintln!("{resolved:?}");
-    let response = match req.method() {
-        &Method::GET => {
-            if let Some(resolved) = resolved {
-                send_file(resolved).await
-            } else {
-                Ok(not_found())
-            }
+    match (req.method(), resolved) {
+        (&Method::GET, Some(uri::Resolved::File(path))) => {
+            send_file(&path).await
         },
-        &Method::HEAD => {
-            Ok(Response::builder()
-                .status(StatusCode::NOT_IMPLEMENTED)
-                .body(Body::from("not yet implemented"))
-                .unwrap())
+        (&Method::GET, Some(uri::Resolved::Markdown(path))) => {
+            send_file(&path).await
+        },
+        (&Method::GET, Some(uri::Resolved::Directory(_path))) => {
+            Ok(not_implemented())
+        },
+        (&Method::GET, None) => {
+            Ok(not_found())
+        },
+        (&Method::HEAD, _) => {
+            Ok(not_implemented())
         },
         _ => {
             Ok(Response::builder()
@@ -71,9 +74,7 @@ async fn route(req: Request<Body>, state: Arc<ServerContext>) -> Result<Response
                 .body(Body::from("Only get requests are possible"))
                 .unwrap())
         },
-    };
-
-    response
+    }
 }
 
 fn not_found() -> Response<Body> {
@@ -83,7 +84,14 @@ fn not_found() -> Response<Body> {
         .unwrap()
 }
 
-async fn send_file(resolved: uri::Resolved) -> Result<Response<Body>, Infallible> {
+fn not_implemented() -> Response<Body> {
+    Response::builder()
+       .status(StatusCode::NOT_IMPLEMENTED)
+       .body(Body::from("not yet implemented"))
+       .unwrap()
+}
+
+async fn send_file(resolved: &Path) -> Result<Response<Body>, Infallible> {
     if let Ok(file) = File::open(resolved).await {
         let stream = FramedRead::new(file, BytesCodec::new());
         let body = Body::wrap_stream(stream);
