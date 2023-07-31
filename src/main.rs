@@ -1,8 +1,10 @@
 use std::convert::Infallible;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use hyper::{Method, StatusCode, Body, Request, Response, Server};
 use hyper::service::{make_service_fn, service_fn};
+
+use tera::Tera;
 
 use hyper_markdown_server::{
     context::ServerContext,
@@ -14,11 +16,21 @@ use hyper_markdown_server::{
 
 #[tokio::main]
 async fn main() {
+    // Load configuration
     let config = Config::build()
         .source_env()
         .build();
     let addr = config.addr;
-    let context = Arc::new(ServerContext { config });
+    eprintln!("{config:#?}");
+
+    // Set up templates
+    let template_glob = config.template_dir.join("**/*.html");
+    let tera = match Tera::new(&template_glob.to_str().unwrap()) {
+        Ok(t) => RwLock::new(t),
+        Err(e) => {eprintln!("{e}"); panic!()},
+    };
+    eprintln!("{tera:#?}");
+    let context = Arc::new(ServerContext { config, tera });
 
     // A `Service` is needed for every connection.
     // This creates one from the `route` function.

@@ -17,7 +17,18 @@ use crate::{
     response,
 };
 
+const MARKDOWN_TEMPLATE: &str = "markdown.html";
+
 pub async fn markdown(path: &Path, headers: &HeaderMap, context: &ServerContext) -> Response<Body> {
+    #[cfg(debug_assertions)]
+    {
+        //  Reload tera templates
+        let mut lock = context.tera.write().unwrap();
+        match lock.full_reload() {
+            Ok(_) => (),
+            Err(e) => {eprintln!("{e}"); drop(lock); panic!()},
+        }
+    }
     let accepts = preferred_format(headers);
     for af in accepts {
         use AcceptFormat::*;
@@ -45,17 +56,28 @@ async fn naked_markdown(path: &Path) -> Response<Body> {
     }
 }
 
-async fn full_markdown(path: &Path, _context: &ServerContext) -> Response<Body> {
-    let contents = parse_markdown(path).await;
-    match contents {
+async fn full_markdown(path: &Path, context: &ServerContext) -> Response<Body> {
+    let contents = match parse_markdown(path).await {
         Ok(contents) => {
-            let body = Body::from(contents);
-            return Response::new(body);
+            contents
         },
         Err(_) => {
             //  TODO: better error handling of file errors
             return response::not_found();
         },
+    };
+    let tera = context.tera.read().unwrap();
+    let mut context = tera::Context::new();
+    context.insert("content", &contents);
+    match tera.render(MARKDOWN_TEMPLATE, &context) {
+        Ok(html_out) => {
+            let body = Body::from(html_out);
+            Response::new(body)
+        },
+        Err(e) => {
+            eprintln!("{e}");
+            response::server_error("Error in applying template")
+        }
     }
 }
 

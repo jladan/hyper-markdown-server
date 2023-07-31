@@ -35,6 +35,14 @@ pub fn not_implemented() -> Response<Body> {
        .body(Body::from("not yet implemented"))
        .unwrap()
 }
+
+pub fn server_error(msg: &str) -> Response<Body> {
+    Response::builder()
+       .status(StatusCode::INTERNAL_SERVER_ERROR)
+       .body(Body::from(msg.to_string()))
+       .unwrap()
+}
+
 pub fn not_acceptable() -> Response<Body> {
     Response::builder()
        .status(StatusCode::NOT_ACCEPTABLE)

@@ -1,0 +1,17 @@
+.nav-directory h2 {
+    display: inline;
+}
+
+.nav-directory.collapsed ul {
+    display: none;
+}
+
+button.directory-collapse {
+}
+button.directory-collapse::before {
+    content:  "▽";
+    margin-right: .2em;
+}
+.collapsed button.directory-collapse::before {
+    content:  "▷";
+}
