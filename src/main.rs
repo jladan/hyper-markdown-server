@@ -9,6 +9,7 @@ use hyper_markdown_server::{
     config::Config,
     uri,
     response,
+    handler,
 };
 
 #[tokio::main]
@@ -51,7 +52,7 @@ async fn route(req: Request<Body>, state: Arc<ServerContext>) -> Result<Response
             Ok(response::send_file(&path).await)
         },
         (&Method::GET, Some(uri::Resolved::Markdown(path))) => {
-            Ok(response::send_markdown(&path, req.headers(), state.as_ref()).await)
+            Ok(handler::markdown(&path, req.headers(), state.as_ref()).await)
         },
         (&Method::GET, Some(uri::Resolved::Directory(_path))) => {
             Ok(response::not_implemented())
