@@ -35,4 +35,10 @@ pub fn not_implemented() -> Response<Body> {
        .body(Body::from("not yet implemented"))
        .unwrap()
 }
+pub fn not_acceptable() -> Response<Body> {
+    Response::builder()
+       .status(StatusCode::NOT_ACCEPTABLE)
+       .body(Body::from("Requested format can not be provided"))
+       .unwrap()
+}
 
