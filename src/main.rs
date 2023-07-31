@@ -5,6 +5,7 @@ use hyper::{Method, StatusCode, Body, Request, Response, Server};
 use hyper::service::{make_service_fn, service_fn};
 
 use hyper_markdown_server::{
+    context::ServerContext,
     config::Config,
     uri,
     response,
@@ -42,19 +43,15 @@ async fn main() {
     }
 }
 
-struct ServerContext {
-    config: Config,
-}
-
 async fn route(req: Request<Body>, state: Arc<ServerContext>) -> Result<Response<Body>, Infallible> {
     let resolved = uri::resolve(req.uri(), &state.config);
     eprintln!("{resolved:?}");
     match (req.method(), resolved) {
         (&Method::GET, Some(uri::Resolved::File(path))) => {
-            response::send_file(&path).await
+            Ok(response::send_file(&path).await)
         },
         (&Method::GET, Some(uri::Resolved::Markdown(path))) => {
-            response::send_file(&path).await
+            Ok(response::send_markdown(&path, req.headers(), state.as_ref()).await)
         },
         (&Method::GET, Some(uri::Resolved::Directory(_path))) => {
             Ok(response::not_implemented())

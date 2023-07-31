@@ -9,3 +9,16 @@ functionality as my
 using an asynchronous runtime. It is still relatively low-level, using hyper
 instead of another framework, because I want some practice in the nitty-gritty
 parts of rust.
+
+## TODO
+
+- [ ] Ability to create, edit, move, or delete from browser?
+    - [ ] POST method to resources for moving them
+        - [ ] reply with a redirect
+    - [ ] DELETE to delete files
+    - [ ] PUT method could be used to create the file
+        - [ ] Open up in editor to actually make changes
+    - [ ] PUT or PATCH can be used to make changes to a file.
+        - this would require an in-browser editor :(
+        - a PUT operation would be safer, because it is idempotent
+
