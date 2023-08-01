@@ -1,0 +1,8 @@
+<ul>
+    {%  for item in dir_contents.dirs %}
+    <li><a href="{{item.path}}">{{item.name}}</a></li>
+    {% endfor %}
+    {%  for item in dir_contents.files %}
+    <li><a href="{{item.path}}">{{item.name}}</a></li>
+    {% endfor %}
+<ul>

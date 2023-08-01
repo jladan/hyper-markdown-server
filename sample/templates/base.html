@@ -1,0 +1,47 @@
+{% import "macros.html" as macros %}
+<!doctype html>
+<script src="/main.js" defer></script>
+<!-- Syntax highlighting -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+<!-- and it's easy to individually load additional languages
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/python.min.js"></script>
+<!-- -->
+<script defer>hljs.highlightAll()</script>
+<!-- mathjax for latex equations -->
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+    window.MathJax = {
+        tex: {
+            inlineMath: [['$$', '$$'], ['\\(', '\\)']],
+            displayMath: [['\\[', '\\]']],
+        }
+    };
+</script>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+
+        <title>{% block title%}{% endblock title %}</title>
+        <meta name="description" content="Simple web server">
+        <meta name="author" content="John Ladan">
+
+        <link rel="stylesheet" href="/styles.css">
+        <link rel="stylesheet" href="/aux.css">
+    </head>
+
+    <body class="">
+        <nav id="top-bar" class="bg-slate-500">
+            <h1 style="display: inline;"><a href="/">Markdown browser</a></h1>
+        </nav>
+        <nav id="left-pane" class="min-w-fit bg-slate-300 p-4">
+            <h1>Contents</h1>
+            <ul>
+                <li class="nav-directory">{# {{ macros::directory_tree(dirtree=dirtree) }} #}</li>
+            </ul>
+        </nav>
+        <main id="content-view" class="bg-slate-200 p-4">
+            {% block content %}{% endblock content %}
+        </main>
+    </body>
+</html>
