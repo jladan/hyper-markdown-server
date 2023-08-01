@@ -1,10 +1,15 @@
 use std::convert::Infallible;
-use std::sync::{Arc, RwLock};
+use std::{
+    sync::{Arc, RwLock},
+    path::PathBuf,
+};
 
 use hyper::{Method, StatusCode, Body, Request, Response, Server};
 use hyper::service::{make_service_fn, service_fn};
 
 use tera::Tera;
+
+use clap::Parser;
 
 use hyper_markdown_server::{
     context::ServerContext,
@@ -16,12 +21,15 @@ use hyper_markdown_server::{
 
 #[tokio::main]
 async fn main() {
+    let cli = Cli::parse();
+    eprintln!("{cli:#?}");
+
     // Load configuration
     let config = Config::build()
         .source_env()
         .build();
     let addr = config.addr;
-    eprintln!("{config:#?}");
+    // eprintln!("{config:#?}");
 
     // Set up templates
     let template_glob = config.template_dir.join("**/*.html");
@@ -29,7 +37,7 @@ async fn main() {
         Ok(t) => RwLock::new(t),
         Err(e) => {eprintln!("{e}"); panic!()},
     };
-    eprintln!("{tera:#?}");
+    // eprintln!("{tera:#?}");
     let context = Arc::new(ServerContext { config, tera });
 
     // A `Service` is needed for every connection.
@@ -89,3 +97,25 @@ async fn shutdown_signal() {
         .await
         .expect("failed to install the CTRL+C signal handler");
 }
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    /// The address (default: '0.0.0.0:7878')
+    addr: Option<String>,
+
+    /// Sets the port (default 7878)
+    #[arg(short, long, value_name = "PORT")]
+    port: Option<String>,
+
+    /// Sets the webserver rooot
+    #[arg(short, long, value_name = "WEB_ROOT")]
+    webroot: Option<PathBuf>,
+    /// Sets the location of static files
+    #[arg(short, long, value_name = "STATIC_DIR")]
+    static_dir: Option<PathBuf>,
+    /// Sets the location of document templates
+    #[arg(short, long, value_name = "TEMPLATE_DIR")]
+    template_dir: Option<PathBuf>,
+}
+
