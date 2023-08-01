@@ -2,6 +2,7 @@ use std::convert::Infallible;
 use std::{
     sync::{Arc, RwLock},
     path::PathBuf,
+    net::ToSocketAddrs,
 };
 
 use hyper::{Method, StatusCode, Body, Request, Response, Server};
@@ -23,13 +24,34 @@ use hyper_markdown_server::{
 async fn main() {
     let cli = Cli::parse();
     eprintln!("{cli:#?}");
+    // eprintln!("{:?}", cli.addr.map(|s| {s.to_socket_addrs()}));
 
     // Load configuration
-    let config = Config::build()
-        .source_env()
-        .build();
+    let mut config = Config::build().source_env();
+    if let Some(Ok(mut addrs)) = cli.addr.clone().map(|s| s.to_socket_addrs()) {
+        if let Some(addr) = addrs.next() {
+            config.set_address(&addr);
+        } else {
+            println!("unrecognized address: {}", cli.addr.unwrap());
+        }
+    }
+    if let Some(port) = cli.port {
+        config.set_port(port);
+    }
+    if let Some(root) = cli.webroot {
+        config.set_root(&root);
+    }
+    if let Some(sdir) = cli.static_dir {
+        config.set_static(&sdir);
+    }
+    if let Some(tdir) = cli.template_dir {
+        config.set_template(&tdir);
+    }
+
+
+    let config = config.build();
     let addr = config.addr;
-    // eprintln!("{config:#?}");
+    eprintln!("{config:#?}");
 
     // Set up templates
     let template_glob = config.template_dir.join("**/*.html");
@@ -106,7 +128,7 @@ struct Cli {
 
     /// Sets the port (default 7878)
     #[arg(short, long, value_name = "PORT")]
-    port: Option<String>,
+    port: Option<u16>,
 
     /// Sets the webserver rooot
     #[arg(short, long, value_name = "WEB_ROOT")]
