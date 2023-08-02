@@ -22,36 +22,10 @@ use hyper_markdown_server::{
 
 #[tokio::main]
 async fn main() {
-    let cli = Cli::parse();
-    eprintln!("{cli:#?}");
-    // eprintln!("{:?}", cli.addr.map(|s| {s.to_socket_addrs()}));
-
     // Load configuration
-    let mut config = Config::build().source_env();
-    if let Some(Ok(mut addrs)) = cli.addr.clone().map(|s| s.to_socket_addrs()) {
-        if let Some(addr) = addrs.next() {
-            config.set_address(&addr);
-        } else {
-            println!("unrecognized address: {}", cli.addr.unwrap());
-        }
-    }
-    if let Some(port) = cli.port {
-        config.set_port(port);
-    }
-    if let Some(root) = cli.webroot {
-        config.set_root(&root);
-    }
-    if let Some(sdir) = cli.static_dir {
-        config.set_static(&sdir);
-    }
-    if let Some(tdir) = cli.template_dir {
-        config.set_template(&tdir);
-    }
-
-
-    let config = config.build();
-    let addr = config.addr;
-    eprintln!("{config:#?}");
+    let cli = Cli::parse();
+    let config = make_config(cli);
+    eprintln!("{:#?}", config);
 
     // Set up templates
     let template_glob = config.template_dir.join("**/*.html");
@@ -59,7 +33,9 @@ async fn main() {
         Ok(t) => RwLock::new(t),
         Err(e) => {eprintln!("{e}"); panic!()},
     };
-    // eprintln!("{tera:#?}");
+
+    // NOTE: addr has to be cloned before the config is moved into the services
+    let addr = config.addr;
     let context = Arc::new(ServerContext { config, tera });
 
     // A `Service` is needed for every connection.
@@ -141,3 +117,28 @@ struct Cli {
     template_dir: Option<PathBuf>,
 }
 
+fn make_config(cli: Cli) -> Config {
+    let mut config = Config::build().source_env();
+    // NOTE: `to_socket_addrs()` is required to handle "localhost" and other hostnames
+    if let Some(Ok(mut addrs)) = cli.addr.clone().map(|s| s.to_socket_addrs()) {
+        if let Some(addr) = addrs.next() {
+            config.set_address(&addr);
+        } else {
+            println!("unrecognized address: {}", cli.addr.unwrap());
+        }
+    }
+    if let Some(port) = cli.port {
+        config.set_port(port);
+    }
+    if let Some(root) = cli.webroot {
+        config.set_root(&root);
+    }
+    if let Some(sdir) = cli.static_dir {
+        config.set_static(&sdir);
+    }
+    if let Some(tdir) = cli.template_dir {
+        config.set_template(&tdir);
+    }
+
+    return config.build();
+} 
