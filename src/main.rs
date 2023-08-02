@@ -29,7 +29,7 @@ async fn main() {
 
     // Set up templates
     let template_glob = config.template_dir.join("**/*.html");
-    let tera = match Tera::new(&template_glob.to_str().unwrap()) {
+    let tera = match Tera::new(&template_glob.to_str().expect("Templates could not be parsed")) {
         Ok(t) => RwLock::new(t),
         Err(e) => {eprintln!("{e}"); panic!()},
     };

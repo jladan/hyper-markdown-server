@@ -23,7 +23,7 @@ pub async fn markdown(path: &Path, headers: &HeaderMap, context: &ServerContext)
     #[cfg(debug_assertions)]
     {
         //  Reload tera templates
-        let mut lock = context.tera.write().unwrap();
+        let mut lock = context.tera.write().expect("Could not open tera for reloading");
         match lock.full_reload() {
             Ok(_) => (),
             Err(e) => {eprintln!("{e}"); drop(lock); panic!()},
