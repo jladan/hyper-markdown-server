@@ -1,10 +1,16 @@
 use std::convert::Infallible;
-use std::sync::{Arc, RwLock};
+use std::{
+    sync::{Arc, RwLock},
+    path::PathBuf,
+    net::ToSocketAddrs,
+};
 
 use hyper::{Method, StatusCode, Body, Request, Response, Server};
 use hyper::service::{make_service_fn, service_fn};
 
 use tera::Tera;
+
+use clap::Parser;
 
 use hyper_markdown_server::{
     context::ServerContext,
@@ -17,11 +23,9 @@ use hyper_markdown_server::{
 #[tokio::main]
 async fn main() {
     // Load configuration
-    let config = Config::build()
-        .source_env()
-        .build();
-    let addr = config.addr;
-    eprintln!("{config:#?}");
+    let cli = Cli::parse();
+    let config = make_config(cli);
+    eprintln!("{:#?}", config);
 
     // Set up templates
     let template_glob = config.template_dir.join("**/*.html");
@@ -29,7 +33,9 @@ async fn main() {
         Ok(t) => RwLock::new(t),
         Err(e) => {eprintln!("{e}"); panic!()},
     };
-    eprintln!("{tera:#?}");
+
+    // NOTE: addr has to be cloned before the config is moved into the services
+    let addr = config.addr;
     let context = Arc::new(ServerContext { config, tera });
 
     // A `Service` is needed for every connection.
@@ -89,3 +95,50 @@ async fn shutdown_signal() {
         .await
         .expect("failed to install the CTRL+C signal handler");
 }
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    /// The address (default: '0.0.0.0:7878')
+    addr: Option<String>,
+
+    /// Sets the port (default 7878)
+    #[arg(short, long, value_name = "PORT")]
+    port: Option<u16>,
+
+    /// Sets the webserver rooot
+    #[arg(short, long, value_name = "WEB_ROOT")]
+    webroot: Option<PathBuf>,
+    /// Sets the location of static files
+    #[arg(short, long, value_name = "STATIC_DIR")]
+    static_dir: Option<PathBuf>,
+    /// Sets the location of document templates
+    #[arg(short, long, value_name = "TEMPLATE_DIR")]
+    template_dir: Option<PathBuf>,
+}
+
+fn make_config(cli: Cli) -> Config {
+    let mut config = Config::build().source_env();
+    // NOTE: `to_socket_addrs()` is required to handle "localhost" and other hostnames
+    if let Some(Ok(mut addrs)) = cli.addr.clone().map(|s| s.to_socket_addrs()) {
+        if let Some(addr) = addrs.next() {
+            config.set_address(&addr);
+        } else {
+            println!("unrecognized address: {}", cli.addr.unwrap());
+        }
+    }
+    if let Some(port) = cli.port {
+        config.set_port(port);
+    }
+    if let Some(root) = cli.webroot {
+        config.set_root(&root);
+    }
+    if let Some(sdir) = cli.static_dir {
+        config.set_static(&sdir);
+    }
+    if let Some(tdir) = cli.template_dir {
+        config.set_template(&tdir);
+    }
+
+    return config.build();
+} 

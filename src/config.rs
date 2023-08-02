@@ -3,7 +3,7 @@
 
 use std::{
     env,
-    path::PathBuf, 
+    path::{Path, PathBuf}, 
     net::{SocketAddr, IpAddr},
 };
 
@@ -101,30 +101,35 @@ impl ConfigBuilder {
     }
 
     /// Set the root directory for the fileserver
-    pub fn set_root(mut self, path: &str) -> ConfigBuilder{
+    pub fn set_root(&mut self, path: &Path) -> &ConfigBuilder {
         self.rootdir = PathBuf::from(path);
         self
     }
 
     /// Set the static directory for the fileserver
-    pub fn set_static(mut self, path: &str) -> ConfigBuilder{
+    pub fn set_static(&mut self, path: &Path) -> &ConfigBuilder{
         self.staticdir = PathBuf::from(path);
         self
     }
 
-    pub fn set_address<T>(mut self, addr: T) -> ConfigBuilder 
-        where SocketAddr: From<T> {
-            self.addr = SocketAddr::from(addr);
+    /// Set the template directory for the fileserver
+    pub fn set_template(&mut self, path: &Path) -> &ConfigBuilder{
+        self.template_dir = PathBuf::from(path);
+        self
+    }
+
+    pub fn set_address(&mut self, addr: &SocketAddr) -> &ConfigBuilder {
+            self.addr = addr.clone();
             self
         }
 
-    pub fn set_ip<T>(mut self, new_ip: T) -> ConfigBuilder
+    pub fn set_ip<T>(&mut self, new_ip: T) -> &ConfigBuilder
         where IpAddr: From<T> {
             self.addr.set_ip(IpAddr::from(new_ip));
             self
         }
 
-    pub fn set_port(mut self, new_port: u16) -> ConfigBuilder {
+    pub fn set_port(&mut self, new_port: u16) -> &ConfigBuilder {
             self.addr.set_port(new_port);
             self
         }
@@ -148,7 +153,7 @@ mod tests {
     #[test]
     fn builder_sets_root() {
         let built = ConfigBuilder::new()
-            .set_root("rootdir")
+            .set_root(&PathBuf::from("rootdir"))
             .build();
         assert_eq!(PathBuf::from("rootdir"), built.rootdir);
     }
