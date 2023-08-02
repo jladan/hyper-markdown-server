@@ -118,7 +118,7 @@ struct Cli {
 }
 
 fn make_config(cli: Cli) -> Config {
-    let mut config = Config::build().source_env();
+    let mut config = Config::builder().source_env();
     // NOTE: `to_socket_addrs()` is required to handle "localhost" and other hostnames
     if let Some(Ok(mut addrs)) = cli.addr.clone().map(|s| s.to_socket_addrs()) {
         if let Some(addr) = addrs.next() {

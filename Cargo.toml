@@ -14,3 +14,6 @@ tokio-util = { version = "0.7.8", features = ["codec"] }
 pulldown-cmark = "0.9.3"
 tera = "1.19.0"
 clap = { version = "4.3.19", features = ["derive"] }
+
+[dev-dependencies]
+scopeguard = "1.2.0"

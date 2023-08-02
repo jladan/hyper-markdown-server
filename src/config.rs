@@ -29,7 +29,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn build() -> ConfigBuilder {
+    pub fn builder() -> ConfigBuilder {
         ConfigBuilder::new()
     }
     
@@ -152,44 +152,44 @@ mod tests {
     
     #[test]
     fn builder_sets_root() {
-        let built = ConfigBuilder::new()
-            .set_root(&PathBuf::from("rootdir"))
-            .build();
-        assert_eq!(PathBuf::from("rootdir"), built.rootdir);
+        let mut config = ConfigBuilder::new();
+        config.set_root(&PathBuf::from("rootdir"));
+        let config = config.build();
+        assert_eq!(PathBuf::from("rootdir"), config.rootdir);
     }
 
     #[test]
     fn builder_sets_longer_root() {
-        let built = ConfigBuilder::new()
-            .set_root("path/to/rootdir/")
-            .build();
+        let mut built = ConfigBuilder::new();
+        built.set_root(&PathBuf::from("path/to/rootdir/"));
+        let built = built.build();
         assert_eq!(PathBuf::from("path/to/rootdir"), built.rootdir);
     }
     
     #[test]
     fn builder_sets_addr_tuple() {
         let addr_source = ([1,1,1,1], 8080);
-        let built = Config::build()
-            .set_address(addr_source)
-            .build();
+        let mut built = Config::builder();
+        built.set_address(&SocketAddr::from(addr_source));
+        let built = built.build();
         assert_eq!(built.addr, SocketAddr::from(addr_source))
     }
 
     #[test]
     fn builder_sets_ip() {
         let addr_source = ([1,1,1,1], 8080);
-        let built = Config::build()
-            .set_ip(addr_source.0)
-            .build();
+        let mut built = Config::builder();
+        built.set_ip(addr_source.0);
+        let built = built.build();
         assert_eq!(built.addr.ip(), SocketAddr::from(addr_source).ip())
     }
 
     #[test]
     fn builder_sets_port() {
         let addr_source = ([1,1,1,1], 8080);
-        let built = Config::build()
-            .set_port(addr_source.1)
-            .build();
+        let mut built = Config::builder();
+        built.set_port(addr_source.1);
+        let built = built.build();
         assert_eq!(built.addr.port(), SocketAddr::from(addr_source).port())
     }
 
