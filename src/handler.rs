@@ -14,7 +14,8 @@ use pulldown_cmark::{Parser, Options, html};
 
 use crate::{
     context::ServerContext,
-    response, walk_dir,
+    context::walk_dir,
+    response,
 };
 
 const MARKDOWN_TEMPLATE: &str = "markdown.html";
