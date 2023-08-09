@@ -18,6 +18,16 @@ pub struct ServerContext {
     pub tera: RwLock<Tera>,
 }
 
+impl ServerContext {
+    pub fn reload_templates(&self) {
+        let mut lock = self.tera.write().expect("Could not open tera for reloading");
+        match lock.full_reload() {
+            Ok(_) => eprintln!("Templates reloaded"),
+            Err(e) => {eprintln!("{e}"); drop(lock); panic!()},
+        }
+    }
+}
+
 // Filesystem tree context {{{ 
 /* Using Separate structs for files and directories makes it much easier to build from WalkDir
  * In addition, it forces my to store separate lists of subdirectories and files, which means the
