@@ -55,9 +55,9 @@ async fn main() {
     });
 
     let server = Server::bind(&addr).serve(make_svc);
-    let graceful = server.with_graceful_shutdown(shutdown_signal());
+    let server = server.with_graceful_shutdown(shutdown_signal());
 
-    if let Err(e) = graceful.await {
+    if let Err(e) = server.await {
         eprintln!("server error: {}", e);
     }
 }

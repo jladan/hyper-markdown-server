@@ -14,6 +14,16 @@ tokio-util = { version = "0.7.8", features = ["codec"] }
 pulldown-cmark = "0.9.3"
 tera = "1.19.0"
 clap = { version = "4.3.19", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+walkdir = "2.3.3"
 
 [dev-dependencies]
 scopeguard = "1.2.0"
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.release]
+opt-level = 3
+debug = false
