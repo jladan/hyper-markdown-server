@@ -14,6 +14,7 @@ use pulldown_cmark::{Parser, Options, html};
 
 use crate::{
     context::ServerContext,
+    context::walk_dir,
     response,
 };
 
@@ -57,6 +58,7 @@ async fn naked_markdown(path: &Path) -> Response<Body> {
 }
 
 async fn full_markdown(path: &Path, context: &ServerContext) -> Response<Body> {
+    let dirtree = walk_dir(&context.config.rootdir, true).expect("Could not get filesystem tree");
     let contents = match parse_markdown(path).await {
         Ok(contents) => {
             contents
@@ -69,6 +71,7 @@ async fn full_markdown(path: &Path, context: &ServerContext) -> Response<Body> {
     let tera = context.tera.read().unwrap();
     let mut context = tera::Context::new();
     context.insert("content", &contents);
+    context.insert("dirtree", &dirtree);
     match tera.render(MARKDOWN_TEMPLATE, &context) {
         Ok(html_out) => {
             let body = Body::from(html_out);
