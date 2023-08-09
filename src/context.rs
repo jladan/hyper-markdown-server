@@ -16,6 +16,41 @@ use serde::Serialize;
 pub struct ServerContext {
     pub config: Config,
     pub tera: RwLock<Tera>,
+    pub roottree: RwLock<Directory>,
+}
+
+impl ServerContext {
+    pub fn new(config: Config) -> Self {
+        // Set up templates
+        let template_glob = config.template_dir.join("**/*.html");
+        let tera = match Tera::new(&template_glob.to_str().expect("Templates could not be parsed")) {
+            Ok(t) => RwLock::new(t),
+            Err(e) => {eprintln!("{e}"); panic!()},
+        };
+        // Get web root contents
+        let rt = walk_dir(&config.rootdir, true);
+        let roottree = RwLock::new(rt.expect("Could not walk the web root"));
+        return Self { config, tera, roottree };
+    }
+
+    pub fn reload_templates(&self) {
+        let mut lock = self.tera.write().expect("Could not open tera for reloading");
+        match lock.full_reload() {
+            Ok(_) => eprintln!("Templates reloaded"),
+            Err(e) => {eprintln!("{e}"); drop(lock); panic!()},
+        }
+    }
+
+    pub fn refresh_roottree(&self) {
+        let rt = walk_dir(&self.config.rootdir, true);
+        match rt {
+            Ok(rt) => {
+                let mut lock = self.roottree.write().expect("Could not access roottree for refresh");
+                *lock = rt;
+            },
+            Err(e) => eprintln!("Error in tracing web root: {e}"),
+        }
+    }
 }
 
 // Filesystem tree context {{{ 

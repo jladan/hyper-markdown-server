@@ -1,14 +1,12 @@
 use std::convert::Infallible;
 use std::{
-    sync::{Arc, RwLock},
+    sync::Arc,
     path::PathBuf,
     net::ToSocketAddrs,
 };
 
 use hyper::{Method, StatusCode, Body, Request, Response, Server};
 use hyper::service::{make_service_fn, service_fn};
-
-use tera::Tera;
 
 use clap::Parser;
 
@@ -27,16 +25,9 @@ async fn main() {
     let config = make_config(cli);
     eprintln!("{:#?}", config);
 
-    // Set up templates
-    let template_glob = config.template_dir.join("**/*.html");
-    let tera = match Tera::new(&template_glob.to_str().expect("Templates could not be parsed")) {
-        Ok(t) => RwLock::new(t),
-        Err(e) => {eprintln!("{e}"); panic!()},
-    };
-
     // NOTE: addr has to be cloned before the config is moved into the services
     let addr = config.addr;
-    let context = Arc::new(ServerContext { config, tera });
+    let context = Arc::new(ServerContext::new(config));
 
     // A `Service` is needed for every connection.
     // This creates one from the `route` function.

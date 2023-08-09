@@ -3,7 +3,7 @@
 //! For example, if GET Markdown is requested, then the headers are needed to determine the type of
 //! response
 
-use std::path::Path;
+use std::{path::Path, ops::Deref};
 
 use tokio::fs;
 use hyper::{Body, Response, HeaderMap};
@@ -14,7 +14,6 @@ use pulldown_cmark::{Parser, Options, html};
 
 use crate::{
     context::ServerContext,
-    context::walk_dir,
     response,
 };
 
@@ -22,14 +21,8 @@ const MARKDOWN_TEMPLATE: &str = "markdown.html";
 
 pub async fn markdown(path: &Path, headers: &HeaderMap, context: &ServerContext) -> Response<Body> {
     #[cfg(debug_assertions)]
-    {
-        //  Reload tera templates
-        let mut lock = context.tera.write().expect("Could not open tera for reloading");
-        match lock.full_reload() {
-            Ok(_) => (),
-            Err(e) => {eprintln!("{e}"); drop(lock); panic!()},
-        }
-    }
+    context.reload_templates();
+
     let accepts = preferred_format(headers);
     for af in accepts {
         use AcceptFormat::*;
@@ -58,7 +51,6 @@ async fn naked_markdown(path: &Path) -> Response<Body> {
 }
 
 async fn full_markdown(path: &Path, context: &ServerContext) -> Response<Body> {
-    let dirtree = walk_dir(&context.config.rootdir, true).expect("Could not get filesystem tree");
     let contents = match parse_markdown(path).await {
         Ok(contents) => {
             contents
@@ -68,10 +60,13 @@ async fn full_markdown(path: &Path, context: &ServerContext) -> Response<Body> {
             return response::not_found();
         },
     };
+    // Reload roottree
+    context.refresh_roottree();
+    let dirtree = context.roottree.read().expect("Could not read web root");
     let tera = context.tera.read().unwrap();
     let mut context = tera::Context::new();
     context.insert("content", &contents);
-    context.insert("dirtree", &dirtree);
+    context.insert("dirtree", &dirtree.deref());
     match tera.render(MARKDOWN_TEMPLATE, &context) {
         Ok(html_out) => {
             let body = Body::from(html_out);
