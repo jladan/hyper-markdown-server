@@ -3,7 +3,7 @@
 //! For example, if GET Markdown is requested, then the headers are needed to determine the type of
 //! response
 
-use std::{path::Path, ops::Deref};
+use std::{path::Path, ops::Deref, str::FromStr};
 
 use tokio::fs;
 use hyper::{Body, Response, HeaderMap};
@@ -19,6 +19,46 @@ use crate::{
 
 const MARKDOWN_TEMPLATE: &str = "markdown.html";
 
+pub async fn file(path: &Path, headers: &HeaderMap, context: &ServerContext) -> Response<Body> {
+    let accepts = preferred_format(headers);
+    for af in accepts {
+        use AcceptFormat::*;
+        match af {
+            PartialHtml => return wrapped_file(path, context).await,
+            _ => continue,
+        }
+    }
+    response::send_file(path).await
+}
+
+async fn wrapped_file(path: &Path, _context: &ServerContext) -> Response<Body> {
+    let stripped = _context.strip_path(path);
+    if stripped.is_none() {
+        return response::not_found();
+    }
+    let stripped = stripped.unwrap();
+    let guess = mime_guess::from_path(path).first();
+    match guess {
+        Some(mime) => {
+            match mime.type_().as_str() {
+                "image" => Response::new(Body::from(format!("<img src=\"{}\" />", stripped.to_string_lossy()))),
+                "video" => Response::new(Body::from("this is a video")),
+                "application" => {
+                    if mime.subtype() == "pdf" {
+                        Response::new(Body::from(format!("<iframe src=\"{}\" />", stripped.to_string_lossy())))
+                    } else {
+                        Response::new(Body::from("some application"))
+                    }
+                },
+                _ => response::send_file(path).await,
+            }
+
+        },
+        None => response::send_file(path).await,
+    }
+}
+
+// Markdown handlers {{{
 pub async fn markdown(path: &Path, headers: &HeaderMap, context: &ServerContext) -> Response<Body> {
     #[cfg(debug_assertions)]
     context.reload_templates();
@@ -90,6 +130,9 @@ async fn parse_markdown(path: &Path) -> Result<String, tokio::io::Error> {
     return Ok(html_out);
 }
 
+// }}}
+
+// Determining accepted format {{{
 enum AcceptFormat {
     Html,
     PartialHtml,
@@ -120,3 +163,4 @@ fn preferred_format(headers: &HeaderMap) -> Vec<AcceptFormat> {
     }
 }
 
+// }}}

@@ -58,7 +58,7 @@ async fn route(req: Request<Body>, state: Arc<ServerContext>) -> Result<Response
     eprintln!("{resolved:?}");
     match (req.method(), resolved) {
         (&Method::GET, Some(uri::Resolved::File(path))) => {
-            Ok(response::send_file(&path).await)
+            Ok(handler::file(&path, req.headers(), state.as_ref()).await)
         },
         (&Method::GET, Some(uri::Resolved::Markdown(path))) => {
             Ok(handler::markdown(&path, req.headers(), state.as_ref()).await)
