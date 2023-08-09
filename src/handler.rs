@@ -6,7 +6,7 @@
 use std::{path::Path, ops::Deref, str::FromStr};
 
 use tokio::fs;
-use hyper::{Body, Response, HeaderMap};
+use hyper::{Body, Response, HeaderMap, http::HeaderValue};
 
 use pulldown_cmark::{Parser, Options, html};
 
@@ -28,7 +28,12 @@ pub async fn file(path: &Path, headers: &HeaderMap, context: &ServerContext) -> 
             _ => continue,
         }
     }
-    response::send_file(path).await
+    let mut resp = response::send_file(path).await;
+    let guess = mime_guess::from_path(path).first();
+    if let Some(mime) =  guess {
+        resp.headers_mut().append("Content-Type", HeaderValue::from_str(mime.essence_str()).unwrap());
+    }
+    resp
 }
 
 async fn wrapped_file(path: &Path, _context: &ServerContext) -> Response<Body> {

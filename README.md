@@ -12,6 +12,7 @@ parts of rust.
 
 ## TODO
 
+- [ ] Figure out why partials for svg don't work
 - [ ] Ability to create, edit, move, or delete from browser?
     - [ ] POST method to resources for moving them
         - [ ] reply with a redirect
