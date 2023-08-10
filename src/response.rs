@@ -29,6 +29,14 @@ pub async fn send_file(resolved: &Path) -> Response<Body> {
     }
 }
 
+pub fn send_html<T>(contents: T) -> Response<Body>
+    where Body: From<T>
+{
+    let mut resp = Response::new(Body::from(contents));
+    resp.headers_mut().append("Content-Type", HeaderValue::from_static("text/html"));
+    resp
+}
+
 pub fn not_found() -> Response<Body> {
     Response::builder()
         .status(StatusCode::NOT_FOUND)

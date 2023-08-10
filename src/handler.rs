@@ -42,18 +42,15 @@ async fn wrapped_file(path: &Path, _context: &ServerContext) -> Response<Body> {
         Some(mime) => {
             match mime.type_().as_str() {
                 "image" => {
-                    let mut resp = Response::new(Body::from(format!("<img src=\"{}\" />", stripped.to_string_lossy())));
-                    resp.headers_mut().append("Content-Type", HeaderValue::from_static("text/html"));
-                    resp
+                    response::send_html(format!("<img src=\"{}\" />", stripped.to_string_lossy()))
                 },
                 "video" => Response::new(Body::from("this is a video")),
                 "application" => {
                     if mime.subtype() == "pdf" {
-                        let mut resp = Response::new(Body::from(format!("<iframe src=\"{}\" />", stripped.to_string_lossy())));
-                        resp.headers_mut().append("Content-Type", HeaderValue::from_static("text/html"));
-                        resp
+                        response::send_html(format!("<iframe src=\"{}\" />", stripped.to_string_lossy()))
                     } else {
                         Response::new(Body::from("some application"))
+
                     }
                 },
                 _ => response::send_file(path).await,
@@ -86,8 +83,7 @@ async fn naked_markdown(path: &Path) -> Response<Body> {
     let contents = parse_markdown(path).await;
     match contents {
         Ok(contents) => {
-            let body = Body::from(contents);
-            return Response::new(body);
+            return response::send_html(contents);
         },
         Err(_) => {
             //  TODO: better error handling of file errors
@@ -115,8 +111,7 @@ async fn full_markdown(path: &Path, context: &ServerContext) -> Response<Body> {
     context.insert("dirtree", &dirtree.deref());
     match tera.render(MARKDOWN_TEMPLATE, &context) {
         Ok(html_out) => {
-            let body = Body::from(html_out);
-            Response::new(body)
+            response::send_html(html_out)
         },
         Err(e) => {
             eprintln!("{e}");
