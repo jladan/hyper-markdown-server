@@ -28,12 +28,7 @@ pub async fn file(path: &Path, headers: &HeaderMap, context: &ServerContext) -> 
             _ => continue,
         }
     }
-    let mut resp = response::send_file(path).await;
-    let guess = mime_guess::from_path(path).first();
-    if let Some(mime) =  guess {
-        resp.headers_mut().append("Content-Type", HeaderValue::from_str(mime.essence_str()).unwrap());
-    }
-    resp
+    response::send_file(path).await
 }
 
 async fn wrapped_file(path: &Path, _context: &ServerContext) -> Response<Body> {
@@ -46,11 +41,17 @@ async fn wrapped_file(path: &Path, _context: &ServerContext) -> Response<Body> {
     match guess {
         Some(mime) => {
             match mime.type_().as_str() {
-                "image" => Response::new(Body::from(format!("<img src=\"{}\" />", stripped.to_string_lossy()))),
+                "image" => {
+                    let mut resp = Response::new(Body::from(format!("<img src=\"{}\" />", stripped.to_string_lossy())));
+                    resp.headers_mut().append("Content-Type", HeaderValue::from_static("text/html"));
+                    resp
+                },
                 "video" => Response::new(Body::from("this is a video")),
                 "application" => {
                     if mime.subtype() == "pdf" {
-                        Response::new(Body::from(format!("<iframe src=\"{}\" />", stripped.to_string_lossy())))
+                        let mut resp = Response::new(Body::from(format!("<iframe src=\"{}\" />", stripped.to_string_lossy())));
+                        resp.headers_mut().append("Content-Type", HeaderValue::from_static("text/html"));
+                        resp
                     } else {
                         Response::new(Body::from("some application"))
                     }

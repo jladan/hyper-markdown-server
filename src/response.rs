@@ -8,14 +8,21 @@ use std::path::Path;
 use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
 
-use hyper::{StatusCode, Body, Response};
+use hyper::{StatusCode, Body, Response, http::HeaderValue};
 
+/// Stream a chunked file, with Content-Type guessed from file extension
 pub async fn send_file(resolved: &Path) -> Response<Body> {
     let fresult = File::open(resolved).await;
     if let Ok(file) = fresult {
         let stream = FramedRead::new(file, BytesCodec::new());
         let body = Body::wrap_stream(stream);
-        return Response::new(body);
+        let mut resp = Response::new(body);
+        // Now add content-type
+        let guess = mime_guess::from_path(resolved).first();
+        if let Some(mime) =  guess {
+            resp.headers_mut().append("Content-Type", HeaderValue::from_str(mime.essence_str()).unwrap());
+        }
+        resp
     } else {
         // TODO: Probably want to handle the different types of file errors here
         return not_found();
