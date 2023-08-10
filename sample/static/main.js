@@ -44,3 +44,26 @@ for (let btn of navdirbuttons) {
     }, {capture: true});
 }
 
+window.addEventListener("popstate", (event) => {
+    fetch(document.location, {
+        method: "GET",
+        headers: {
+            "x-partial": "true",
+        },
+    }).then((response) => {
+        if (response.ok) {
+            return response.text();
+        } else if (response.status == 404) {
+            return `<h1>Page not found</h1><p>${response.url}</p>`;
+        } else {
+            throw new Error(`HTTP error, status = ${response.status}`);
+        }
+    }).then((body) => {
+        contentView.innerHTML = body;
+        hljs.highlightAll();
+        MathJax.typeset();
+    }).catch((error) => {
+        console.log(`Error: ${error.message}`);
+    });
+
+});
