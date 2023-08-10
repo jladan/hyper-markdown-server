@@ -16,6 +16,7 @@ tera = "1.19.0"
 clap = { version = "4.3.19", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 walkdir = "2.3.3"
+mime_guess = "2.0.4"
 
 [dev-dependencies]
 scopeguard = "1.2.0"

@@ -51,6 +51,12 @@ impl ServerContext {
             Err(e) => eprintln!("Error in tracing web root: {e}"),
         }
     }
+
+    pub fn strip_path(&self, path: &Path) -> Option<OsString> {
+        let stripped = path.strip_prefix(&self.config.rootdir);
+        return stripped.ok().map(make_abs);
+    }
+
 }
 
 // Filesystem tree context {{{ 

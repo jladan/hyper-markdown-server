@@ -3,10 +3,10 @@
 //! For example, if GET Markdown is requested, then the headers are needed to determine the type of
 //! response
 
-use std::{path::Path, ops::Deref};
+use std::{path::Path, ops::Deref, str::FromStr};
 
 use tokio::fs;
-use hyper::{Body, Response, HeaderMap};
+use hyper::{Body, Response, HeaderMap, http::HeaderValue};
 
 use pulldown_cmark::{Parser, Options, html};
 
@@ -19,6 +19,49 @@ use crate::{
 
 const MARKDOWN_TEMPLATE: &str = "markdown.html";
 
+pub async fn file(path: &Path, headers: &HeaderMap, context: &ServerContext) -> Response<Body> {
+    let accepts = preferred_format(headers);
+    for af in accepts {
+        use AcceptFormat::*;
+        match af {
+            PartialHtml => return wrapped_file(path, context).await,
+            _ => continue,
+        }
+    }
+    response::send_file(path).await
+}
+
+async fn wrapped_file(path: &Path, _context: &ServerContext) -> Response<Body> {
+    let stripped = _context.strip_path(path);
+    if stripped.is_none() {
+        return response::not_found();
+    }
+    let stripped = stripped.unwrap();
+    let guess = mime_guess::from_path(path).first();
+    match guess {
+        Some(mime) => {
+            match mime.type_().as_str() {
+                "image" => {
+                    response::send_html(format!("<img src=\"{}\" />", stripped.to_string_lossy()))
+                },
+                "video" => Response::new(Body::from("this is a video")),
+                "application" => {
+                    if mime.subtype() == "pdf" {
+                        response::send_html(format!("<iframe src=\"{}\" />", stripped.to_string_lossy()))
+                    } else {
+                        Response::new(Body::from("some application"))
+
+                    }
+                },
+                _ => response::send_file(path).await,
+            }
+
+        },
+        None => response::send_file(path).await,
+    }
+}
+
+// Markdown handlers {{{
 pub async fn markdown(path: &Path, headers: &HeaderMap, context: &ServerContext) -> Response<Body> {
     #[cfg(debug_assertions)]
     context.reload_templates();
@@ -40,8 +83,7 @@ async fn naked_markdown(path: &Path) -> Response<Body> {
     let contents = parse_markdown(path).await;
     match contents {
         Ok(contents) => {
-            let body = Body::from(contents);
-            return Response::new(body);
+            return response::send_html(contents);
         },
         Err(_) => {
             //  TODO: better error handling of file errors
@@ -69,8 +111,7 @@ async fn full_markdown(path: &Path, context: &ServerContext) -> Response<Body> {
     context.insert("dirtree", &dirtree.deref());
     match tera.render(MARKDOWN_TEMPLATE, &context) {
         Ok(html_out) => {
-            let body = Body::from(html_out);
-            Response::new(body)
+            response::send_html(html_out)
         },
         Err(e) => {
             eprintln!("{e}");
@@ -90,6 +131,9 @@ async fn parse_markdown(path: &Path) -> Result<String, tokio::io::Error> {
     return Ok(html_out);
 }
 
+// }}}
+
+// Determining accepted format {{{
 enum AcceptFormat {
     Html,
     PartialHtml,
@@ -120,3 +164,4 @@ fn preferred_format(headers: &HeaderMap) -> Vec<AcceptFormat> {
     }
 }
 
+// }}}
