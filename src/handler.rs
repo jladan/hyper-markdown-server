@@ -19,6 +19,42 @@ use crate::{
 
 const MARKDOWN_TEMPLATE: &str = "markdown.html";
 
+pub fn directory(path: &Path, headers: &HeaderMap, _context: &ServerContext) -> Response<Body> {
+    let accepts = preferred_format(headers);
+    use  AcceptFormat::*;
+    for af in accepts {
+        match af {
+            PartialHtml => return dir_html(path, _context, true),
+            Html | Any  => return dir_html(path, _context, false),
+            _ => continue,
+        }
+    }
+    response::not_acceptable()
+}
+
+fn dir_html(path: &Path, context: &ServerContext, partial: bool) -> Response<Body> {
+    let tera = context.tera.read().expect("could not read template engine");
+    if !partial {
+        context.refresh_roottree();
+    }
+    let root_tree = context.roottree.read().expect("could not read web-root tree");
+    let dirtree = crate::context::walk_dir(path, false).expect("failure to trace directory");
+    let mut context = tera::Context::new();
+    context.insert("dirtree", &root_tree.deref());
+    context.insert("dir_contents", &dirtree);
+    let rendered = if partial {
+        tera.render("directory-chunk.html", &context)
+    } else {
+        tera.render("directory.html", &context)
+    };
+    match rendered {
+        Ok(contents) => response::send_html(contents),
+        Err(e) => {eprintln!("{e}"); response::server_error("")},
+    }
+}
+
+// General files {{{
+
 pub async fn file(path: &Path, headers: &HeaderMap, context: &ServerContext) -> Response<Body> {
     let accepts = preferred_format(headers);
     for af in accepts {
@@ -60,6 +96,8 @@ async fn wrapped_file(path: &Path, _context: &ServerContext) -> Response<Body> {
         None => response::send_file(path).await,
     }
 }
+
+// }}}
 
 // Markdown handlers {{{
 pub async fn markdown(path: &Path, headers: &HeaderMap, context: &ServerContext) -> Response<Body> {

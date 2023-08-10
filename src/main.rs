@@ -63,8 +63,8 @@ async fn route(req: Request<Body>, state: Arc<ServerContext>) -> Result<Response
         (&Method::GET, Some(uri::Resolved::Markdown(path))) => {
             Ok(handler::markdown(&path, req.headers(), state.as_ref()).await)
         },
-        (&Method::GET, Some(uri::Resolved::Directory(_path))) => {
-            Ok(response::not_implemented())
+        (&Method::GET, Some(uri::Resolved::Directory(path))) => {
+            Ok(handler::directory(&path, req.headers(), state.as_ref()))
         },
         (&Method::GET, None) => {
             Ok(response::not_found())
